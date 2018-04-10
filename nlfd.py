@@ -45,7 +45,7 @@ def extra_layer(vgg, cfg):
             pool_layers += [nn.Conv2d(128 * (6 - k), 128 * (5 - k), 1)]
         else:
             # TODO: change this to sampling
-            pool_layers += [nn.ConvTranspose2d(128 * (6 - k), 128 * (5 - k), 3, 2, 1, 1)]
+            pool_layers += [nn.ConvTranspose2d(128 * (6 - k), 128 * (5 - k), 2, 2)]
     return vgg, feat_layers, pool_layers
 
 
@@ -61,7 +61,7 @@ class NLFD(nn.Module):
         self.conv_g = nn.Conv2d(128, 1, 1)
         self.conv_l = nn.Conv2d(640, 1, 1)
 
-    def forward(self, x, label=None):
+    def forward(self, x):
         sources, num = list(), 0
         for k in range(len(self.base)):
             x = self.base[k](x)
@@ -74,10 +74,14 @@ class NLFD(nn.Module):
             else:
                 out = self.pool[k](torch.cat([sources[k][0], sources[k][1], out], dim=1)) if k == 0 else F.relu(
                     self.pool[k](torch.cat([sources[k][0], sources[k][1], out], dim=1)), inplace=True)
-
-        score = self.conv_g(self.glob(x)) + self.conv_l(out)
-        prob = F.sigmoid(score)
-        return prob
+        if False:
+            lscore = self.conv_l(out)
+            gscore = self.conv_g(self.glob(x))
+            return lscore, gscore
+        else:
+            score = self.conv_g(self.glob(x)) + self.conv_l(out)
+            prob = F.sigmoid(score)
+            return prob
 
 
 def build_model():
