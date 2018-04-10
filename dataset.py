@@ -13,7 +13,7 @@ class ImageData(data.Dataset):
         self.t_transform = t_transform
 
     def __getitem__(self, item):
-        image = Image.open(self.image_path[item])
+        image = Image.open(self.image_path[item]).convert('RGB')
         label = Image.open(self.label_path[item]).convert('L')
         if self.transform is not None:
             image = self.transform(image)
@@ -27,12 +27,10 @@ class ImageData(data.Dataset):
 
 def get_loader(img_root, label_root, img_size, batch_size, mode='train', num_thread=1):
     shuffle = False
-    mean = torch.Tensor([123.68, 116.779, 103.939]).view(3, 1, 1) / 255
     if mode == 'train':
         transform = transforms.Compose([
             transforms.Resize((img_size, img_size)),
-            transforms.ToTensor(),
-            transforms.Lambda(lambda x: x - mean)
+            transforms.ToTensor()
         ])
         t_transform = transforms.Compose([
             transforms.Resize((img_size // 2, img_size // 2)),
@@ -43,8 +41,7 @@ def get_loader(img_root, label_root, img_size, batch_size, mode='train', num_thr
     else:
         transform = transforms.Compose([
             transforms.Resize((img_size, img_size)),
-            transforms.ToTensor(),
-            transforms.Lambda(lambda x: x - mean)
+            transforms.ToTensor()
         ])
         t_transform = transforms.Compose([
             transforms.ToTensor(),
