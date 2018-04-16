@@ -26,12 +26,6 @@ class TransFactory():
 
 _trans_factory = TransFactory()
 
-class GetTransform:
-    def __init__(self,prob):
-        self.prob = prob
-    def __call__(self,trans_name, *parameter):
-        # Visualize(np.load('/home/tinzhuo/ML_ISLES2018/ML_ISLES2017/cache/LGG_brats_tcia_pat493_0001.npz'),trans_name,*parameter)
-        return CurriculumWrapper(_trans_factory.create_preprocess(trans_name,*parameter), self.prob)
 
 class CurriculumWrapper:
     def __init__(self, trans, prob):
