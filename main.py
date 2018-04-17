@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
     # Misc
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'test'])
-    parser.add_argument('--visdom', type=bool, default=True)
+    parser.add_argument('--visdom', type=bool, default=False)
 
     config = parser.parse_args()
     if not os.path.exists(config.save_fold): os.mkdir(config.save_fold)

@@ -18,11 +18,13 @@ class TransFactory():
         self.trans_map[trans_name] = trans_class
 
     def create_preprocess(self,trans_name,*parameter):
-        print parameter
+        print(parameter)
         if parameter:
             return self.trans_map[trans_name](json.loads(*parameter))
         else:
             return self.trans_map[trans_name]()
+    def trans_name():
+        return self.trans_map.key()
 
 _trans_factory = TransFactory()
 
@@ -39,63 +41,68 @@ class CurriculumWrapper:
                 args = args[0]
             return args
 
-class ReColor: 
-    def __init__(self, alpha=0.005):
-        self._alpha = alpha
+class Resize:
+    def __init__(self, img_size, target_size=None):
+        self.img_size = img_size
+        self.target_size = target_size if target_size is not None else img_size
 
     def __call__(self, im, mask):
-        num_chns = im.shape[2]
+        im = cv2.resize(im, self.img_size)
+        mask = cv2.resize(mask, self.target_size)
+        return im, mask
+
+class ReColor: 
+    def __init__(self, alpha=0.05, beta=0.3):
+        self._alpha = alpha
+        self._beta = beta
+
+    def __call__(self, im, mask):
         # random amplify each channel
-        t = np.random.uniform(-1, 1, num_chns)
-        im = im.astype(np.float32)
+        t = np.random.uniform(-1, 1, 3)
         im *= (1 + t * self._alpha)
-        im = im.astype(np.uint8)
-        return im,mask
+        mx = 255. * (1 + self._alpha)
+        up = np.random.uniform(-1, 1)
+        im = np.power(im / mx, 1. + up * self._beta)
+        im = im * 255
+        return im, mask
 _trans_factory.register('ReColor', ReColor) 
 
 class GaussianNoise:
-    def __init__(self, mean=0, var=1):
+    def __init__(self, mean=0, var=0.01):
         self.mean = mean
         self.var = var
+
     def __call__(self, im, mask):
-        num_chns = im.shape[2]
-        src_h,src_w,_ = im.shape
-        img_noise = np.zeros((src_h,src_w), im.dtype)
-        t = skimage.util.random_noise(img_noise, mode='gaussian', seed=None, clip=True, mean=self.mean,var=self.var)
-        for i in range(num_chns):
-            im[:,:,i] = im[:,:,i] * t   
-        return im,mask
+        noise = np.random.normal(self.mean, self.var, size=im.shape)*255.0
+        im = np.clip(im+noise, 0, 255.0)
+        return im, mask
 _trans_factory.register('GaussianNoise', GaussianNoise ) 
 
 
 class GaussianNoiseLocal:
     def __init__(self, diff=20):
         self.diff = diff
+
     def __call__(self, im, mask):
-        num_chns = im.shape[2]
         src_h,src_w,_ = im.shape
 
-        noise_map = np.zeros((src_h,src_w))
         center_h = random.randint(0,src_h)
         center_w = random.randint(0,src_w)
         R = random.randint(1,30)
 
-        i = np.tile(np.arange(src_h),(src_w,1))
-        j = np.tile(np.arange(src_w),(src_h,1)).T
-
+        j, i = np.meshgrid(np.arange(src_w), np.arange(src_h))
         dis = np.sqrt((i-center_h)**2+(j-center_w)**2)
-        noise_map[i, j] = np.exp(-0.5*dis/R)
+        noise_map = np.exp(-0.5*dis/R)
+
         rand_map = np.random.rand(src_h,src_w)
         noise_map[rand_map>noise_map]= 0
 
         R_change = random.randint(0,self.diff)
 
-        for i in range(num_chns):
-            im[:,:,i] = im[:,:,i]-(noise_map)*R_change  
-        return im,mask
+        im = im - noise_map.reshape(src_h, src_w, 1)*R_change  
+        im = np.clip(im, 0, 255.0)
+        return im, mask
 _trans_factory.register('GaussianNoiseLocal', GaussianNoiseLocal ) 
-
-
 
 class SampleVolume:
     def __init__(self, dst_shape=[96, 96, 5], pos_ratio=-1):
@@ -184,7 +191,7 @@ class RandomFlip:
 
     def __call__(self, im, mask):
         if random.random() > 0.5:
-            im = im[:, ::-1]
+            im = im[:, ::-1, :]
             mask = mask[:, ::-1]
         return im, mask
 _trans_factory.register('RandomFlip', RandomFlip)

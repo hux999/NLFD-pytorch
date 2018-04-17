@@ -50,8 +50,9 @@ def extra_layer(vgg, cfg):
 
 
 class NLFD(nn.Module):
-    def __init__(self, base, feat_layers, pool_layers):
+    def __init__(self, base, feat_layers, pool_layers, export=False):
         super(NLFD, self).__init__()
+        self.export = export
         self.pos = [4, 9, 16, 23, 30]
         self.base = nn.ModuleList(base)
         self.feat = nn.ModuleList(feat_layers)
@@ -74,7 +75,7 @@ class NLFD(nn.Module):
             else:
                 out = self.pool[k](torch.cat([sources[k][0], sources[k][1], out], dim=1)) if k == 0 else F.relu(
                     self.pool[k](torch.cat([sources[k][0], sources[k][1], out], dim=1)), inplace=True)
-        if False:
+        if self.export:
             lscore = self.conv_l(out)
             gscore = self.conv_g(self.glob(x))
             return lscore, gscore
